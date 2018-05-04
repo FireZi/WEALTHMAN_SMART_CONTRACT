@@ -40,7 +40,7 @@ contract Exchanger {
         admin = _admin;
     }
 
-    function() payable public {
+    function() external payable {
     }
 
     function changeForOrderAllowableTime(uint _time) public onlyAdmin {

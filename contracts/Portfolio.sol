@@ -66,7 +66,7 @@ contract Portfolio {
         exchanger = Exchanger(_exchanger);
     }
 
-    function() payable {
+    function() external payable {
         if (!isRunning) {
             deposit();
         }
