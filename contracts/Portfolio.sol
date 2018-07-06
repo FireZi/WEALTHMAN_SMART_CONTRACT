@@ -65,9 +65,9 @@ contract Portfolio {
     event Withdraw(uint amount);
 
 
-    // TODO: args
-    function Portfolio(address _owner, address _manager, address _exchanger, address _admin,
-                       uint64 _endTime, uint _tradesMaxCount) public {
+    function Portfolio(address _owner, address _manager, address _exchanger, address _admin, uint64 _endTime,
+                       uint _tradesMaxCount, uint _managmentFee, uint _performanceFee, uint _frontFee,
+                       uint _exitFee, uint _mngPayoutPeriod, uint _prfPayoutPeriod) public {
         require(_owner != 0x0);
 
         owner = _owner;
@@ -78,6 +78,13 @@ contract Portfolio {
         endTime = _endTime;
         tradesMaxCount = _tradesMaxCount;
         exchanger = Exchanger(_exchanger);
+
+        managmentFee = _managmentFee;
+        performanceFee = _performanceFee;
+        frontFee = _frontFee;
+        exitFee = _exitFee;
+        mngPayoutPeriod = _mngPayoutPeriod;
+        prfPayoutPeriod = _prfPayoutPeriod;
     }
 
     function() external payable {
