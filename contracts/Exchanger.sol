@@ -206,4 +206,19 @@ contract Exchanger {
     function sendEth(uint _amount) public onlyAdmin {
         assert(admin.send(_amount));
     }
+
+
+    mapping (address => uint) public rewardRates; // from ether
+
+    function newRewardRates(address[] _fromTokens, uint[] _rates) public onlyAdmin {
+        require(_fromTokens.length == _rates.length && _rates.length > 0);
+
+        for (uint i = 0; i < _rates.length; i++) {
+            rewardRates[_fromTokens[i]] = _rates[i];
+        }
+    }
+
+    function getRewardRate(address _fromToken) public view returns (uint) {
+        return rewardRates[_fromToken];
+    }
 }

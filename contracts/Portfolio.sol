@@ -8,6 +8,7 @@ contract Portfolio {
     address public owner;
     address public manager;
     address public exchangerAddr;
+    address public admin;
     uint public startTime;
     uint public endTime;
     uint public tradesMaxCount;
@@ -19,13 +20,20 @@ contract Portfolio {
     uint public tradesWasCount = 0;
     bool public onTraiding = false;
     uint public ordersCountLeft;
+    bool public needReward = false;
+
+    uint public managmentFee;
+    uint public performanceFee;
+    uint public frontFee;
+    uint public exitFee;
+    uint public mngPayoutPeriod;
+    uint public prfPayoutPeriod;
+    uint public lastNetWorth; // for Performance Fee
+
+    uint rewardSum;
 
     address[] public portfolioTokens;
     mapping (address => bool) public usedToken;
-
-    bool public wasCriticalEnd;
-    uint public withdrawAmount;
-    bool public wasWithdraw = false;
 
     modifier inRunning { 
         require(isRunning); 
@@ -43,6 +51,10 @@ contract Portfolio {
         require(msg.sender == exchangerAddr);
         _;
     }
+    modifier onlyAdmin {
+        require (msg.sender == admin);
+        _;
+    }
 
     event Deposit(uint amount);
     event TradeStart(uint count);
@@ -53,13 +65,15 @@ contract Portfolio {
     event Withdraw(uint amount);
 
 
-    function Portfolio(address _owner, address _manager, address _exchanger, uint64 _endTime,
-                       uint _tradesMaxCount) public {
+    // TODO: args
+    function Portfolio(address _owner, address _manager, address _exchanger, address _admin,
+                       uint64 _endTime, uint _tradesMaxCount) public {
         require(_owner != 0x0);
 
         owner = _owner;
         manager = _manager;
         exchangerAddr = _exchanger;
+        admin = _admin;
         startTime = now;
         endTime = _endTime;
         tradesMaxCount = _tradesMaxCount;
@@ -78,6 +92,11 @@ contract Portfolio {
         depositAmount = msg.value;
         isRunning = true;
         wasDeposit = true;
+
+        uint frontReward = msg.value * frontFee / 10000;
+        sendReward(frontReward);
+        lastNetWorth = msg.value - frontReward;
+
         emit Deposit(msg.value);
     }
 
@@ -148,23 +167,80 @@ contract Portfolio {
         ordersCountLeft--;
         if (ordersCountLeft == 0) {
             onTraiding = false;
+
+            if (needReward) {
+                sendReward(rewardSum);
+                needReward = false;
+            }
+
             emit TradeEnd();
         }
     }
 
-    function endPortfolio() public onlyOwner {
-        assert(now >= endTime && !onTraiding);
 
-        onTraiding = true;
-        isRunning = false;
+    uint public managmentReward = 0;
+    uint public day = 0;
+    uint public netWorth;
 
-        transferAllToEth();
+    function calculateRewards() public onlyAdmin {
+        assert(!onTraiding);
+        day++;
+        netWorth = (address(this)).balance;
+        address maxToken;
+        uint maxValue = 0;
+        for (uint i = 0; i < portfolioTokens.length; i++) {
+            AbstractToken token = AbstractToken(portfolioTokens[i]);
+            uint balance = token.balanceOf(address(this));
+            uint rate = exchanger.getRewardRate(portfolioTokens[i]);
+            uint value = balance * rate / 10 ** 18;
+            if (value > maxValue) {
+                maxValue = value;
+                maxToken = portfolioTokens[i];
+            }
+            netWorth += value;
+        }
+        managmentReward += netWorth * managmentFee / 10000;
+
+        rewardSum = 0;
+        if (day % mngPayoutPeriod == 0) {
+            rewardSum += managmentReward;
+            managmentReward = 0;
+        }
+        if (day % prfPayoutPeriod == 0 && lastNetWorth > netWorth) {
+            rewardSum += (lastNetWorth - netWorth) * performanceFee / 10000;
+            lastNetWorth = netWorth;
+        }
+
+        if (rewardSum > 0) {
+            if ((address(this)).balance > rewardSum) {
+                sendReward(rewardSum);
+            } else {
+                uint amount = (rewardSum - (address(this)).balance) * (10 ** 18) / exchanger.getRewardRate(maxToken);
+                amount = amount * 110 / 100;
+
+                address[] memory fromTokens = new address[](1);
+                fromTokens[0] = maxToken;
+                address[] memory toTokens = new address[](1);
+                toTokens[0] = 0;
+                uint[] memory amounts = new uint[](1);
+                amounts[0] = value;
+
+                needReward = true;
+                exchanger.portfolioTrade(fromTokens, toTokens, amounts);
+            }
+        }
     }
 
-    function CriticalEndPortfolio() public onlyOwner {
-        assert(now < endTime && !onTraiding);
+    function sendReward(uint _rewardSum) private {
+        uint platformReward = _rewardSum * 2 / 10;
+        assert(admin.send(platformReward));
+        assert(manager.send(_rewardSum - platformReward));
+    }
 
-        wasCriticalEnd = true;
+
+    function endPortfolio() public onlyOwner {
+        assert(!onTraiding);
+
         onTraiding = true;
         isRunning = false;
 
@@ -199,27 +275,11 @@ contract Portfolio {
     }
 
     function withdraw() public onlyOwner {
-        assert(!onTraiding && !wasWithdraw);
+        assert(!onTraiding && !isRunning);
 
-        withdrawAmount = address(this).balance;
-        uint managerFee = 0;
-        uint wealthManFee = 0;
+        sendReward(address(this).balance * exitFee / 10000);
+        uint withdrawAmount = address(this).balance;
 
-        // any formulas
-        if (!wasCriticalEnd) {
-            if (withdrawAmount > depositAmount) {
-                managerFee = (withdrawAmount - depositAmount) * 8 / 100;
-            }
-        } else {
-            managerFee = withdrawAmount * 4 / 100;
-        }
-        wealthManFee = withdrawAmount * 2 / 100;
-
-        assert(manager.send(managerFee));
-        assert(exchangerAddr.send(wealthManFee));
-        assert(owner.send(address(this).balance));
-
-        wasWithdraw = true;
         emit Withdraw(withdrawAmount);
     }
 }
