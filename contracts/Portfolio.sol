@@ -43,8 +43,8 @@ contract Portfolio {
         require(msg.sender == owner); 
         _;
     }
-    modifier onlyManager {
-        require(msg.sender == manager);
+    modifier onlyAdminOrManager {
+        require(msg.sender == manager || msg.sender == admin);
         _;
     }
     modifier onlyExchanger {
@@ -110,7 +110,7 @@ contract Portfolio {
 
     mapping (address => uint) tokensAmountSum;
 
-    function trade(address[] _fromTokens, address[] _toTokens, uint[] _amounts) public onlyManager inRunning {
+    function trade(address[] _fromTokens, address[] _toTokens, uint[] _amounts) public onlyAdminOrManager inRunning {
         require(_fromTokens.length == _toTokens.length && _toTokens.length == _amounts.length && _fromTokens.length > 0);
         assert(tradesWasCount < tradesMaxCount && !onTraiding);
         assert(now < endTime);
