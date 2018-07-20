@@ -32,6 +32,8 @@ contract Portfolio {
 
     uint rewardSum;
 
+    address eth = address(0);
+
     address[] public portfolioTokens;
     mapping (address => bool) public usedToken;
 
@@ -137,7 +139,7 @@ contract Portfolio {
         }
 
         for (i = 0; i < sz; i++) {
-            if (tokensList[i] == 0) {
+            if (tokensList[i] == eth) {
                 assert(address(this).balance >= tokensAmountSum[tokensList[i]]);
             } else {
                 AbstractToken token = AbstractToken(tokensList[i]);

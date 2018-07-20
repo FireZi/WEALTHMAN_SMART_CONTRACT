@@ -23,6 +23,8 @@ contract Exchanger {
 
     Order[] public orders;
     bool private lockOrders = false;
+
+    address eth = address(0);
     
     modifier onlyAdmin() { 
         require(msg.sender == admin); 
@@ -80,17 +82,17 @@ contract Exchanger {
     }
 
     function doTransfer(address _portfolio, address _fromToken, address _toToken, uint _amount, uint _rate) private returns (bool) {
-        if (_fromToken == 0) {
+        if (_fromToken == eth) {
             return transferFromEth(_portfolio, _fromToken, _toToken, _amount, _rate);
         }
-        if (_toToken == 0) {
+        if (_toToken == eth) {
             return transferToEth(_portfolio, _fromToken, _toToken, _amount, _rate);
         }
         return transferTokens(_portfolio, _fromToken, _toToken, _amount, _rate);
     }
 
     function transferFromEth(address _portfolio, address _fromToken, address _toToken, uint _amount, uint _rate) private returns (bool) {
-        require(_fromToken == 0);
+        require(_fromToken == eth);
 
         uint needAmount = calcNeedAmount(_amount, _rate);
         AbstractToken token = AbstractToken(_toToken);
@@ -106,7 +108,7 @@ contract Exchanger {
     }
 
     function transferToEth(address _portfolio, address _fromToken, address _toToken, uint _amount, uint _rate) private returns (bool) {
-        require(_toToken == 0);
+        require(_toToken == eth);
 
         uint needAmount = calcNeedAmount(_amount, _rate);
         AbstractToken token = AbstractToken(_fromToken);
