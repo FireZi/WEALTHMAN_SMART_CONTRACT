@@ -31,7 +31,7 @@ module.exports = function (deployer) {
         .then(function (_exchanger) {
             exchanger = _exchanger;
             // test Portfolio
-            return deployer.deploy(Portfolio, owner, manager, exchanger.address, endTime, tradesMaxCount);
+            return deployer.deploy(Portfolio, owner, manager, exchanger.address, admin, endTime, tradesMaxCount, 200, 500, 100, 100, 7, 30);
         })
         .then( deployTokens )
         .then( () => Portfolio.deployed() )
