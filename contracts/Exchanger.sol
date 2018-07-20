@@ -49,8 +49,10 @@ contract Exchanger {
         forOrderAllowableTime = _time;
     }
 
-    function allowToken(address _token) public onlyAdmin {
-        isTokenAllowed[_token] = true;
+    function allowTokens(address[] _tokens) public onlyAdmin {
+        for (uint i = 0; i < _tokens.length; i++) {
+            isTokenAllowed[_tokens[i]] = true;
+        }
     }
     function rejectToken(address _token) public onlyAdmin {
         isTokenAllowed[_token] = false;
